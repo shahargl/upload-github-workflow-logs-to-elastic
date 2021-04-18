@@ -44,7 +44,7 @@ def main():
         print(f"Error: {output}")
         sys.exit(-1)
 
-    logs_url = "https://api.github.com/repos/{github_org}}/{repo}/actions/runs/{run_id}/logs".format(
+    logs_url = "https://api.github.com/repos/{github_org}/{repo}/actions/runs/{run_id}/logs".format(
         repo=github_repo,
         run_id=github_run_id
     )
