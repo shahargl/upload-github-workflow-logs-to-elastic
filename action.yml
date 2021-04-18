@@ -1,0 +1,27 @@
+name: "Upload GitHub Action workflows logs to elastic"
+description: "Downloads the workflow logs and uploads to Elastic"
+author: "Shahar Glazner"
+inputs:
+  github_token:
+    description: "GitHub PAT"
+  github_org:
+    description: "The github organization to read the workflows logs from"
+  github_repository:
+    description: "The github repository to read the workflows logs from"
+  github_run_id:
+    description: "The workflow specific run id to read the logs from"
+  elastic_api_key_id:
+    description: "Elastic api key id"
+  elastic_api_key:
+    description: "Elastic api key"
+  elastic_host:
+    description: "The elastic host"
+  elastic_index:
+    description: "The elastic index"
+
+outputs:
+  result:
+    description: "Result"
+runs:
+  using: "docker"
+  image: "Dockerfile"
