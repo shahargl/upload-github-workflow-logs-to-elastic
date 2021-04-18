@@ -1,5 +1,5 @@
 FROM python:3-slim AS builder
-ADD upload-logs-to-elastic-github-action /app
+ADD upload-github-workflow-logs-to-elastic /app
 WORKDIR /app
 
 # We are installing a dependency here directly into our app source dir
