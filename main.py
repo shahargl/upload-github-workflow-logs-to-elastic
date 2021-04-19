@@ -106,7 +106,7 @@ def main():
 
             logs = io.BytesIO(r.content)
             for log in logs:
-                elastic_logger.info(str(log.strip()), extra={
+                elastic_logger.info(log.strip().decode(), extra={
                     "job_id": job_id,
                     "job_name": jobs.get(job_id).get('job_name'),
                     "repo": github_repo,
