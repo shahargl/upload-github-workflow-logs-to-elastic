@@ -44,14 +44,9 @@ def main():
         print(f"Error: {output}")
         sys.exit(-1)
 
-    logs_url = "https://api.github.com/repos/{github_org}/{repo}/actions/runs/{run_id}/logs".format(
-        repo=github_repo,
-        run_id=github_run_id
-    )
-    metadata_url = "https://api.github.com/repos/{github_org}/{repo}/actions/runs/{run_id}".format(
-        repo=github_repo,
-        run_id=github_run_id
-    )
+    logs_url = f"https://api.github.com/repos/{github_org}/{github_repo}/actions/runs/{github_run_id}/logs"
+    metadata_url = f"https://api.github.com/repos/{github_org}/{github_repo}/actions/runs/{github_run_id}"
+    
     try:
         r = requests.get(metadata_url, stream=True, headers={
             "Authorization": f"token {github_token}"
