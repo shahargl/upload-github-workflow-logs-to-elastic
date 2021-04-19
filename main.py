@@ -6,8 +6,6 @@ import zipfile
 import sys
 import signal
 import json
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
 # don't remove, it loads the configuration
 import logger
 
@@ -31,8 +29,6 @@ def main():
         sys.exit(-1)
 
     github_token = os.environ.get("INPUT_GITHUB_TOKEN")
-    print(github_token)
-    sys.exit(-1)
     try:
         assert github_token not in (None, '')
     except:
@@ -69,10 +65,7 @@ def main():
 
     elastic_logger = logging.getLogger("elastic")
     try:
-        s = requests.Session()
-        retries = Retry(total=5, backoff_factor=1, status_forcelist=[404])
-        s.mount('https://', HTTPAdapter(max_retries=retries))
-        r = s.get(logs_url, stream=True, headers={
+        r = requests.get(logs_url, stream=True, headers={
             "Authorization": f"token {github_token}"
         })
         if not r.ok:

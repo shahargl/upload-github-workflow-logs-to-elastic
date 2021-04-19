@@ -42,12 +42,16 @@ except:
     print(f"Error: {output}")
     sys.exit(-1)
 
-
-es = elasticsearch.Elasticsearch(
-    [ELASTIC_HOST],
-    api_key=(ELASTIC_API_KEY_ID, ELASTIC_API_KEY),
-    scheme="https"
-)
+try:
+    es = elasticsearch.Elasticsearch(
+        [ELASTIC_HOST],
+        api_key=(ELASTIC_API_KEY_ID, ELASTIC_API_KEY),
+        scheme="https"
+    )
+except elasticsearch.exceptions.AuthorizationException as exc:
+    output = "Authentication to elastic failed"
+    print(f"Error: {output}")
+    sys.exit(-1)
 
 
 class ElasticHandler(logging.Handler):
