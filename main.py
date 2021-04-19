@@ -72,6 +72,9 @@ def main():
         _jobs = json.loads(jobs_response.content)
         for job in _jobs.get('jobs'):
             job_id = job.get('id')
+            # no logs for jobs that weren't completed
+            if not job.get('status') == 'completed':
+                continue
             jobs[job_id] = {
                 "job_id": job_id,
                 "job_name": job.get('name'),
