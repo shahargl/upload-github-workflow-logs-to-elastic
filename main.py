@@ -2,7 +2,6 @@ import os
 import requests
 import io
 import logging
-import zipfile
 import sys
 import signal
 import json
@@ -43,15 +42,14 @@ def main():
         output = "The input github org is not set"
         print(f"Error: {output}")
         sys.exit(-1)
-
-    logs_url = f"https://api.github.com/repos/{github_org}/{github_repo}/actions/runs/{github_run_id}/logs"
+    elastic_logger = logging.getLogger("elastic")
     metadata_url = f"https://api.github.com/repos/{github_org}/{github_repo}/actions/runs/{github_run_id}"
-
     try:
         r = requests.get(metadata_url, stream=True, headers={
             "Authorization": f"token {github_token}"
         })
         metadata = json.loads(r.content)
+        jobs_url = metadata.get('jobs_url')
         metadata.pop('repository')
         metadata.pop('head_repository')
         metadata = {
@@ -63,58 +61,76 @@ def main():
         print(f"::set-output name=result::{output}")
         sys.exit(-1)
 
-    elastic_logger = logging.getLogger("elastic")
+    # extract all done jobs
+    jobs = {}
     try:
-        r = requests.get(logs_url, stream=True, headers={
+        jobs_response = requests.get(jobs_url, headers={
             "Authorization": f"token {github_token}"
         })
-        if not r.ok:
-            print("XXX")
-            print(r.reason)
-            print("XXX")
-            output = "Failed to download logs"
+        if not jobs_response.ok:
+            raise Exception("Failed to get run jobs")
+        _jobs = json.loads(jobs_response.content)
+        for job in _jobs.get('jobs'):
+            job_id = job.get('id')
+            jobs[job_id] = {
+                "job_id": job_id,
+                "job_name": job.get('name'),
+                "job_status": job.get('status'),
+                "job_conclusion": job.get('conclusion'),
+                "job_steps": job.get('steps')
+            }
+            # log this metadata to elastic
+            elastic_logger.info("Job metadata", extra={
+                **jobs.get(job_id)
+            })
+    except Exception as exc:
+        output = "Failed to get run jobs" + str(exc)
+        print(f"Error: {output}")
+        print(f"::set-output name=result::{output}")
+        sys.exit(-1)
+
+    for job_id in jobs:
+        try:
+            job_logs_url = f"https://api.github.com/repos/{github_org}/{github_repo}/actions/jobs/{job_id}/logs"
+            r = requests.get(job_logs_url, stream=True, headers={
+                "Authorization": f"token {github_token}"
+            })
+            if not r.ok:
+                output = "Failed to download logs"
+                print(f"Error: {output}")
+                print(f"::set-output name=result::{output}")
+                sys.exit(-1)
+
+            logs = io.BytesIO(r.content)
+            for log in logs:
+                elastic_logger.info(str(log.strip()), extra={
+                    "job_id": job_id,
+                    "job_name": jobs.get(job_id).get('job_name'),
+                    "repo": github_repo,
+                    "run_id": github_run_id,
+                    **metadata
+                })
+
+        except requests.exceptions.HTTPError as errh:
+            output = "GITHUB API Http Error:" + str(errh)
             print(f"Error: {output}")
             print(f"::set-output name=result::{output}")
             sys.exit(-1)
-
-        z = zipfile.ZipFile(io.BytesIO(r.content))
-        for log_file in z.namelist():
-            if len(log_file.split("/")) != 2:
-                continue
-            job_name, step_name = log_file.split("/")
-            with z.open(log_file) as f:
-                for log in f:
-                    # log is bytes, decode it to str
-                    log_str = log.decode()
-                    # log it to elastic
-                    elastic_logger.info(log_str, extra={
-                        "job": job_name,
-                        "step": step_name,
-                        "repo": github_repo,
-                        "run_id": github_run_id,
-                        **metadata
-                    })
-
-    except requests.exceptions.HTTPError as errh:
-        output = "GITHUB API Http Error:" + str(errh)
-        print(f"Error: {output}")
-        print(f"::set-output name=result::{output}")
-        sys.exit(-1)
-    except requests.exceptions.ConnectionError as errc:
-        output = "GITHUB API Error Connecting:" + str(errc)
-        print(f"Error: {output}")
-        print(f"::set-output name=result::{output}")
-        sys.exit(-1)
-    except requests.exceptions.Timeout as errt:
-        output = "Timeout Error:" + str(errt)
-        print(f"Error: {output}")
-        print(f"::set-output name=result::{output}")
-        sys.exit(-1)
-    except requests.exceptions.RequestException as err:
-        output = "GITHUB API Non catched error connecting:" + str(err)
-        print(f"Error: {output}")
-        print(f"::set-output name=result::{output}")
-        sys.exit(-1)
+        except requests.exceptions.ConnectionError as errc:
+            output = "GITHUB API Error Connecting:" + str(errc)
+            print(f"Error: {output}")
+            print(f"::set-output name=result::{output}")
+            sys.exit(-1)
+        except requests.exceptions.Timeout as errt:
+            output = "Timeout Error:" + str(errt)
+            print(f"Error: {output}")
+            print(f"::set-output name=result::{output}")
+            sys.exit(-1)
+        except requests.exceptions.RequestException as err:
+            output = "GITHUB API Non catched error connecting:" + str(err)
+            print(f"Error: {output}")
+            print(f"::set-output name=result::{output}")
+            sys.exit(-1)
 
 
 def keyboard_interrupt_bug(signal, frame):
