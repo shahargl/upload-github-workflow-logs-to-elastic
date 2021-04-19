@@ -69,6 +69,9 @@ def main():
             "Authorization": f"token {github_token}"
         })
         if not r.ok:
+            print("XXX")
+            print(r.reason)
+            print("XXX")
             output = "Failed to download logs"
             print(f"Error: {output}")
             print(f"::set-output name=result::{output}")
