@@ -31,6 +31,8 @@ def main():
         sys.exit(-1)
 
     github_token = os.environ.get("INPUT_GITHUB_TOKEN")
+    print(github_token)
+    sys.exit(-1)
     try:
         assert github_token not in (None, '')
     except:
