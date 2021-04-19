@@ -71,6 +71,20 @@ class ElasticHandler(logging.Handler):
             return
 
     def flush(self):
+        # if the index is not exist, create it with mapping:
+        if es.indices.exists(index=elastic_index):
+            mapping = '''
+            {  
+              "mappings":{  
+                  "properties": {
+                    "@timestamp": {
+                      "type":   "date",
+                      "format": "epoch_millis"
+                    }
+                  }
+                }
+            }'''
+            es.indices.create(index=elastic_index, body=mapping)
         # commit the logs to elastic
         bulk(
             client=es,
