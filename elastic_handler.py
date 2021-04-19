@@ -72,7 +72,7 @@ class ElasticHandler(logging.Handler):
 
     def flush(self):
         # if the index is not exist, create it with mapping:
-        if es.indices.exists(index=elastic_index):
+        if not es.indices.exists(index=elastic_index):
             mapping = '''
             {  
               "mappings":{  
