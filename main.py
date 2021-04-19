@@ -46,7 +46,7 @@ def main():
 
     logs_url = f"https://api.github.com/repos/{github_org}/{github_repo}/actions/runs/{github_run_id}/logs"
     metadata_url = f"https://api.github.com/repos/{github_org}/{github_repo}/actions/runs/{github_run_id}"
-    
+
     try:
         r = requests.get(metadata_url, stream=True, headers={
             "Authorization": f"token {github_token}"
@@ -68,6 +68,12 @@ def main():
         r = requests.get(logs_url, stream=True, headers={
             "Authorization": f"token {github_token}"
         })
+        if not r.ok:
+            output = "Failed to download logs"
+            print(f"Error: {output}")
+            print(f"::set-output name=result::{output}")
+            return
+
         z = zipfile.ZipFile(io.BytesIO(r.content))
         for log_file in z.namelist():
             if len(log_file.split("/")) != 2:
