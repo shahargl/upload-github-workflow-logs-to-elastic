@@ -6,6 +6,8 @@ import zipfile
 import sys
 import signal
 import json
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 # don't remove, it loads the configuration
 import logger
 
@@ -61,18 +63,21 @@ def main():
         output = "Failed to get run metadata" + str(exc)
         print(f"Error: {output}")
         print(f"::set-output name=result::{output}")
-        return
+        sys.exit(-1)
 
     elastic_logger = logging.getLogger("elastic")
     try:
-        r = requests.get(logs_url, stream=True, headers={
+        s = requests.Session()
+        retries = Retry(total=5, backoff_factor=1, status_forcelist=[404])
+        s.mount('https://', HTTPAdapter(max_retries=retries))
+        r = s.get(logs_url, stream=True, headers={
             "Authorization": f"token {github_token}"
         })
         if not r.ok:
             output = "Failed to download logs"
             print(f"Error: {output}")
             print(f"::set-output name=result::{output}")
-            return
+            sys.exit(-1)
 
         z = zipfile.ZipFile(io.BytesIO(r.content))
         for log_file in z.namelist():
@@ -96,22 +101,22 @@ def main():
         output = "GITHUB API Http Error:" + str(errh)
         print(f"Error: {output}")
         print(f"::set-output name=result::{output}")
-        return
+        sys.exit(-1)
     except requests.exceptions.ConnectionError as errc:
         output = "GITHUB API Error Connecting:" + str(errc)
         print(f"Error: {output}")
         print(f"::set-output name=result::{output}")
-        return
+        sys.exit(-1)
     except requests.exceptions.Timeout as errt:
         output = "Timeout Error:" + str(errt)
         print(f"Error: {output}")
         print(f"::set-output name=result::{output}")
-        return
+        sys.exit(-1)
     except requests.exceptions.RequestException as err:
         output = "GITHUB API Non catched error connecting:" + str(err)
         print(f"Error: {output}")
         print(f"::set-output name=result::{output}")
-        return
+        sys.exit(-1)
 
 
 def keyboard_interrupt_bug(signal, frame):
